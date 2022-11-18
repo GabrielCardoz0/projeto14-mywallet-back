@@ -19,7 +19,7 @@ const newUserSchema = Joi.object({
   });
 
   const userSchema = Joi.object({
-    name:Joi.string().required(),
+    email:Joi.string().email({tlds:{allow:false}}).required(),
     password: Joi.required()
   });
 
@@ -41,7 +41,7 @@ mongoClient.connect().then(() => {
 //metodos da API:
 //Metodos: post login, post register, put  
 
-app.post("/register", ( async (req, res) => {
+app.post("/sign-up", ( async (req, res) => {
     try{
 
 
@@ -77,6 +77,39 @@ app.post("/register", ( async (req, res) => {
     };
 
     res.send(201)
+}));
+
+app.post("/sign-in", (async (req, res) => {
+    try{
+        const user = req.body;
+
+        //veriicar o body da requset com JOi:
+        const verify = userSchema.validate(user);
+
+        if(verify.error){
+            const arr = verify.error.details.map(d => d.message);
+            return res.status(422).send(arr);
+        };
+
+        //verificar se o usuarios esta cadastrado no DB:
+        const userVerify = await db.collection("users").findOne({email:user.email});
+        
+        if(userVerify && bcrypt.compareSync(user.password, userVerify.password)) {
+            const token = uuid();
+
+            await db.collection("sessions").insertOne({
+                userId:userVerify._id,
+                token:token
+            });
+
+            return res.send({token:token});
+
+        } else{
+            return res.status(400).send("email ou senha inválidos");
+        };
+    }catch(error){
+        console.log(error);
+    };
 }));
 
 

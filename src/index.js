@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors"
 import dayjs from "dayjs";
 import Joi from "joi";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import bcrypt from "bcrypt"
 import {v4 as uuid} from "uuid"
 
@@ -87,9 +87,9 @@ app.post("/sign-in", (async (req, res) => {
         const verify = userSchema.validate(user);
 
         if(verify.error){
-            const arr = verify.error.details.map(d => d.message);
-            return res.status(422).send(arr);
-        };
+            const arr = verify.error.details.map(d => d.message)
+            return res.status(422).send(arr)
+        } 
 
         //verificar se o usuarios esta cadastrado no DB:
         const userVerify = await db.collection("users").findOne({email:user.email});
@@ -112,15 +112,57 @@ app.post("/sign-in", (async (req, res) => {
     };
 }));
 
+app.put("/input", ( async(req, res) => {
+    try{
 
-//post users: O usuario cria um novo user, enviando um objeto com nome, email, senha e senharepetida. Recebe um token e o status 201. A api cria um novo usuario com nome, email, senha (encriptografada), tokenId, e array de inputs 
+
+        const valueVerify = valueSchema.validate(req.body);
+
+        if(valueVerify.error){
+            const arr = valueVerify.error.details.map(d => d.message)
+            return res.status(422).send(arr)
+        } 
 
 
-//get input e output: o usuario faz uma requisição e recebe um objeto com seu nome e array de inputs e outputs. O get faz uma verificação do usuario pelo token recebido
+        //verificando se há token:
+        const {authorization } = req.headers;
+        const token = authorization?.replace("Bearer ", "");
 
-// app.get("/outinputs", ((req, res) => {
-//     res.send("Ola vacilao")
-// }));
+        if(!token) return res.sendStatus(401);
 
-// app.listen(5000,"192.168.0.113")
+        //veriricando se há sessao com esse token:
+        const session = await db.collection("sessions").findOne({token:token});
+
+        if(!session) return res.sendStatus(401);
+
+        // verificando se há o usuario dessa sessao:
+
+        const user = await db.collection("users").findOne({_id:session.userId});
+        
+
+
+        if(user){
+            // insere o novo valor no DB:
+            const newInput = {id:user.inputs.length,...req.body, date:dayjs(Date.now()).format("DD/MM/YY")}
+            const inputsArr = [...user.inputs, newInput];
+
+            await db.collection("users").updateOne({_id:session.userId}, {$set:{inputs:inputsArr}});
+            const userUpdate = await db.collection("users").findOne({_id:session.userId});
+            //retirando o valor do password para não haver dados sensíveis:
+            delete userUpdate.password;
+
+            // retorna o array de inputs para o front:
+            return res.send(userUpdate);
+        }else{
+            return res.sendStatus(400);
+        };
+
+
+    }catch(error){
+        console.log(error);
+    };
+}));
+
+
+
 app.listen(5000)

@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt"
 import {v4 as uuid} from "uuid"
-import { MongoClient} from "mongodb";
+// import { MongoClient} from "mongodb";
 import { usersdb, sessionsdb} from "../database/db.js";
 
 
@@ -19,7 +19,10 @@ export async function signIn (req, res){
                 token:token
             });
 
-            return res.send({token:token});
+            return res.send({
+                name:userVerify.name,
+                token:token
+            });
 
         } else{
             return res.status(400).send("email ou senha inválidos");
@@ -30,6 +33,7 @@ export async function signIn (req, res){
 };
 
 export async function signUp (req, res) {
+    
     try{
         //Verificar se o email já está cadastrado no banco de dados:
         const newUserVerify = await usersdb.findOne({email:req.body.email});
@@ -50,9 +54,21 @@ export async function signUp (req, res) {
 
         await usersdb.insertOne(newUser);
 
+        //
+
+        await sessionsdb.insertOne({
+            userId:newUserVerify._id,
+            token:token
+        });
+
+         res.send({
+            name:newUserVerify.name,
+            token:token
+        });
+
     }catch(error){
         console.log(error);
     };
 
-    res.send(201);
+    res.status(201).send({name:req.body.name});
 };

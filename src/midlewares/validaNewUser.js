@@ -1,5 +1,5 @@
 import { newUserSchema } from "../models/schemas.js";
-import Joi from "joi";
+// import Joi from "joi";
 
 function validaNewUser(req, res, next) {
     const verify = newUserSchema.validate(req.body);

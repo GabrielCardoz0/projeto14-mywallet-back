@@ -1,5 +1,5 @@
 import { MongoClient } from "mongodb";
-import express from "express"
+// import express from "express"
 const mongoClient = new MongoClient("mongodb://localhost:27017");
 
 let db;
